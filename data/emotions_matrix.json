@@ -1,0 +1,10 @@
+{
+    "joy": {"joy": 1, "sadness": -1, "anger": -1, "fear": -1, "surprise": 0, "disgust": -1, "trust": 1, "anticipation": 1},
+    "sadness": {"joy": -1, "sadness": 1, "anger": 0, "fear": 1, "surprise": 0, "disgust": 0, "trust": -1, "anticipation": -1},
+    "anger": {"joy": -1, "sadness": 0, "anger": 1, "fear": 1, "surprise": 0, "disgust": 1, "trust": -1, "anticipation": 0},
+    "fear": {"joy": -1, "sadness": 1, "anger": 1, "fear": 1, "surprise": 1, "disgust": 0, "trust": -1, "anticipation": 0},
+    "surprise": {"joy": 0, "sadness": 0, "anger": 0, "fear": 1, "surprise": 1, "disgust": 0, "trust": 0, "anticipation": 1},
+    "disgust": {"joy": -1, "sadness": 0, "anger": 1, "fear": 0, "surprise": 0, "disgust": 1, "trust": -1, "anticipation": -1},
+    "trust": {"joy": 1, "sadness": -1, "anger": -1, "fear": -1, "surprise": 0, "disgust": -1, "trust": 1, "anticipation": 1},
+    "anticipation": {"joy": 1, "sadness": -1, "anger": 0, "fear": 0, "surprise": 1, "disgust": -1, "trust": 1, "anticipation": 1}
+}

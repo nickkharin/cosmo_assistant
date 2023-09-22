@@ -1,0 +1,38 @@
+{
+  "user123": {
+    "name": "Николай",
+    "preferences": {
+      "greeting": "Привет",
+      "farewell": "Пока",
+      "reminder_time": "20:00"
+    },
+    "characteristics": {
+      "friendliness": 0.7,
+      "assertiveness": 0.5
+    },
+    "emotions": {
+      "joy": 0.8,
+      "sadness": 0.1,
+      "anger": 0.05,
+      "fear": 0.05
+    }
+  },
+  "user456": {
+    "name": "Мария",
+    "preferences": {
+      "greeting": "Здравствуйте",
+      "farewell": "До свидания",
+      "reminder_time": "19:00"
+    },
+    "characteristics": {
+      "friendliness": 0.9,
+      "assertiveness": 0.3
+    },
+    "emotions": {
+      "joy": 0.7,
+      "sadness": 0.2,
+      "anger": 0.05,
+      "fear": 0.05
+    }
+  }
+}

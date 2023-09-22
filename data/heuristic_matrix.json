@@ -1,0 +1,31 @@
+{
+  "low_energy": {
+    "take_break": 1,
+    "continue_working": -1,
+    "drink_coffee": 0.8,
+    "do_light_activity": 0.5
+  },
+  "high_stress": {
+    "relax": 1,
+    "take_on_more_work": -1,
+    "meditate": 0.9,
+    "listen_to_music": 0.7
+  },
+  "high_workload": {
+    "prioritize_tasks": 1,
+    "procrastinate": -1,
+    "ask_for_help": 0.6,
+    "delegate_tasks": 0.5
+  },
+  "feeling_happy": {
+    "continue_current_activity": 1,
+    "share_feelings": 0.8,
+    "take_a_break": 0.4
+  },
+  "feeling_sad": {
+    "seek_support": 1,
+    "distract_self": 0.6,
+    "reflect_on_feelings": 0.5,
+    "avoid_social_interaction": -0.5
+  }
+}
