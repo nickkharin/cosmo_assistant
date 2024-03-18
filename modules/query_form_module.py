@@ -14,7 +14,7 @@ class QueryForm:
         self.learning_module = learning_module
 
         self.user_profile = self.user_profile_module.get_user_profile(user_id)
-        self.current_emotion = self.emotions_module.get_current_emotion(user_id)
+        self.current_emotion = self.emotions_module.get_emotion(user_id)
 
     def set_intent(self, intent):
         self.intent = intent

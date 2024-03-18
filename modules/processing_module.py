@@ -1,45 +1,57 @@
 import spacy
-from query_form_module import QueryForm
-from emotions_module import Emotions
-from characteristics_module import Characteristics
+import logging
+from modules.characteristics_module import CharacteristicsModule
 
 
 class ProcessingModule:
-    def __init__(self):
+    def __init__(self, learning_module=None, heuristic_module=None, emotions_module=None, user_profile_module=None,
+                 characteristics_module=None):
+        self.logger = logging.getLogger(__name__)
         self.nlp = spacy.load('ru_core_news_sm')
-        self.emotions = Emotions('path_to_emotion_matrix.json')
-        self.characteristics = Characteristics('path_to_characteristics.json')
+        self.characteristics_module = characteristics_module
+        self.learning_module = learning_module
+        self.heuristic_module = heuristic_module
+        self.emotions_module = emotions_module
+        self.user_profile_module = user_profile_module
 
     async def process_query(self, query_form):
+        #        self.logger.info(f"Processing query: {query_form.query_text}")
         doc = self.nlp(query_form.query_text)
 
         query_form.intent = self._determine_intent(doc)
+        self.logger.info(f"Determined intent: {query_form.intent}")
+
         query_form.entities = self._extract_entities(doc)
+        self.logger.info(f"Extracted entities: {query_form.entities}")
+
         query_form.context = self._get_context(query_form.user_id)
-        query_form.emotion = self.emotions.get_emotion(doc)
+        #        self.logger.info(f"Context for user {query_form.user_id}: {query_form.context}")
+
+        query_form.emotion = self.emotions_module.get_emotion(query_form.user_id)
+        self.logger.info(f"Emotion for user {query_form.user_id}: {query_form.emotion}")
 
         response = self._generate_response(query_form)
+        #        self.logger.info(f"Generated response: {response}")
         return response
 
     def _determine_intent(self, doc):
-        root_verb = None
+        self.logger.debug("Determining intent.")
+        intents = []
         for token in doc:
             if token.dep_ == 'ROOT' and token.pos_ == 'VERB':
-                root_verb = token.lemma_
-                break
+                intents.append(token.lemma_)
 
-        action_objects = [child for child in token.children if child.dep_ in ['dobj', 'attr', 'prep']]
-        adjectives = [child.lemma_ for child in action_objects if child.pos_ == 'ADJ']
+        # Можно добавить более сложные условия для определения намерений
+        if intents:
+            intent = max(set(intents), key=intents.count)  # Пример выбора наиболее частого намерения
+        else:
+            intent = 'unknown'
 
-        intent = {
-            'action': root_verb,
-            'objects': [obj.lemma_ for obj in action_objects],
-            'descriptions': adjectives
-        }
-
-        return intent if root_verb else 'unknown'
+        self.logger.debug(f"Determined intent: {intent}")
+        return {'action': intent}
 
     def _extract_entities(self, doc):
+        self.logger.debug("Extracting entities.")
         entities = []
         for ent in doc.ents:
             entity = {
@@ -52,9 +64,11 @@ class ProcessingModule:
             }
             entities.append(entity)
 
+        self.logger.debug(f"Extracted entities: {entities}")
         return entities
 
     def _get_context(self, user_id):
+        self.logger.debug("Getting user context.")
         history_limit = 5
         user_history = self._get_user_history(user_id, limit=history_limit)
 
@@ -70,9 +84,11 @@ class ProcessingModule:
             context['intents'].add(dialogue['intent'])
             context['entities'].update([entity['text'] for entity in dialogue['entities']])
 
+        #        self.logger.debug(f"Context for user {user_id}: {context}")
         return context
 
     def _get_user_history(self, user_id, limit=5):
+        self.logger.debug("Getting user history.")
         return [
             {'text': 'Какая погода в Москве?', 'intent': 'weather_query',
              'entities': [{'text': 'Москва', 'type': 'location'}], 'topics': ['weather']},
@@ -80,7 +96,8 @@ class ProcessingModule:
         ]
 
     def _generate_response(self, query_form):
-        intent = query_form.intent['action']
+        self.logger.debug("Generating response.")
+        intent = query_form.intent.get('action', 'unknown')
         entities = query_form.entities
         context = query_form.context
         user_emotion = query_form.emotion
@@ -89,6 +106,8 @@ class ProcessingModule:
             return self._handle_greeting(user_emotion)
         elif intent == 'спрашивать':
             return self._handle_inquiry(entities, context)
+        elif intent == 'сделать':
+            return 'Что именно вы хотели бы сделать?'
         else:
             return 'Извините, я не уверен, как на это ответить.'
 
