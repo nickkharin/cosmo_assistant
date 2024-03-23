@@ -9,7 +9,6 @@ from modules.characteristics_module import CharacteristicsModule
 from modules.emotions_module import EmotionsModule
 from modules.heuristic_module import HeuristicMatrix
 
-# Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
@@ -37,9 +36,9 @@ class Main:
             query_form = QueryForm(user_id=user_id, query_text=user_input, user_profile_module=self.user_profile_module,
                                    emotions_module=self.emotions_module, learning_module=self.learning_module)
             response = await self.processing_module.process_query(query_form)
-            self.interface.display_text(f"Cosmo: {response}")
+            self.interface.display_text(response)
         except Exception as e:
-            logging.error(f"Error processing request: {e}")
+            logging.error(f"Error processing request for user {user_id} with input '{user_input}': {e}")
             self.interface.display_text("Извините, произошла ошибка при обработке вашего запроса.")
 
     async def main_loop(self):

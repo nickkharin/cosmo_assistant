@@ -1,11 +1,14 @@
 import spacy
 import logging
 from modules.characteristics_module import CharacteristicsModule
+from skills.math_skill import MathSkill
+from pymystem3 import Mystem
 
 
 class ProcessingModule:
     def __init__(self, learning_module=None, heuristic_module=None, emotions_module=None, user_profile_module=None,
                  characteristics_module=None):
+        self.m = Mystem()
         self.logger = logging.getLogger(__name__)
         self.nlp = spacy.load('ru_core_news_sm')
         self.characteristics_module = characteristics_module
@@ -13,42 +16,52 @@ class ProcessingModule:
         self.heuristic_module = heuristic_module
         self.emotions_module = emotions_module
         self.user_profile_module = user_profile_module
+        self.math_skill = MathSkill()
 
     async def process_query(self, query_form):
-        #        self.logger.info(f"Processing query: {query_form.query_text}")
         doc = self.nlp(query_form.query_text)
-
         query_form.intent = self._determine_intent(doc)
-        self.logger.info(f"Determined intent: {query_form.intent}")
+        self.logger.info(f"Determined intent: {query_form.intent.get('action')}")
 
         query_form.entities = self._extract_entities(doc)
         self.logger.info(f"Extracted entities: {query_form.entities}")
 
         query_form.context = self._get_context(query_form.user_id)
-        #        self.logger.info(f"Context for user {query_form.user_id}: {query_form.context}")
 
         query_form.emotion = self.emotions_module.get_emotion(query_form.user_id)
         self.logger.info(f"Emotion for user {query_form.user_id}: {query_form.emotion}")
 
-        response = self._generate_response(query_form)
-        #        self.logger.info(f"Generated response: {response}")
+        query_form.query_text = self._determine_intent(doc)
+        self.logger.info(f"Determined expression: {query_form.user_id}: {query_form.intent.get('expression')}")
+
+        if query_form.intent['action'] == 'calculate':
+            expression = query_form.intent.get('expression')
+            if expression:
+                response = self.math_skill.handle_math(expression)
+            else:
+                response = "Не удалось распознать математическое выражение."
+        else:
+            response = self._generate_response(query_form)
+
         return response
 
     def _determine_intent(self, doc):
-        self.logger.debug("Determining intent.")
-        intents = []
+        action = 'unknown'
+        expression = None
+
         for token in doc:
             if token.dep_ == 'ROOT' and token.pos_ == 'VERB':
-                intents.append(token.lemma_)
+                action = token.lemma_
+                self.logger.info(f"Lemma: {action}")
+                if action in ['посчитай', 'посчитать']:
+                    action = 'calculate'
+                    expression = doc.text[doc[token.i + 1:].start_char:].strip()
+                    break
 
-        # Можно добавить более сложные условия для определения намерений
-        if intents:
-            intent = max(set(intents), key=intents.count)  # Пример выбора наиболее частого намерения
-        else:
-            intent = 'unknown'
+        if action == 'calculate' and expression:
+            return {'action': 'calculate', 'expression': expression}
 
-        self.logger.debug(f"Determined intent: {intent}")
-        return {'action': intent}
+        return {'action': action}
 
     def _extract_entities(self, doc):
         self.logger.debug("Extracting entities.")
@@ -92,7 +105,6 @@ class ProcessingModule:
         return [
             {'text': 'Какая погода в Москве?', 'intent': 'weather_query',
              'entities': [{'text': 'Москва', 'type': 'location'}], 'topics': ['weather']},
-            # Дополните другими диалогами по мере необходимости
         ]
 
     def _generate_response(self, query_form):
@@ -102,7 +114,13 @@ class ProcessingModule:
         context = query_form.context
         user_emotion = query_form.emotion
 
-        if intent == 'приветствовать':
+        if intent == 'calculate':
+            expression = query_form.intent.get('expression', '')
+            if not expression:
+                expression = self.math_skill.parse_expression(query_form.query_text)
+            result = self.math_skill.calculate_expression(expression)
+            return result
+        elif intent == 'приветствовать':
             return self._handle_greeting(user_emotion)
         elif intent == 'спрашивать':
             return self._handle_inquiry(entities, context)
