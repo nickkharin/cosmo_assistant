@@ -1,14 +1,14 @@
 import spacy
 import logging
+from dotenv import load_dotenv
 from modules.characteristics_module import CharacteristicsModule
 from skills.math_skill import MathSkill
-from pymystem3 import Mystem
+from skills.weather_skill import WeatherSkill
 
 
 class ProcessingModule:
     def __init__(self, learning_module=None, heuristic_module=None, emotions_module=None, user_profile_module=None,
                  characteristics_module=None):
-        self.m = Mystem()
         self.logger = logging.getLogger(__name__)
         self.nlp = spacy.load('ru_core_news_sm')
         self.characteristics_module = characteristics_module
@@ -17,37 +17,48 @@ class ProcessingModule:
         self.emotions_module = emotions_module
         self.user_profile_module = user_profile_module
         self.math_skill = MathSkill()
+        self.weather_skill = WeatherSkill()
 
     async def process_query(self, query_form):
         doc = self.nlp(query_form.query_text)
-        query_form.intent = self._determine_intent(doc)
-        self.logger.info(f"Determined intent: {query_form.intent.get('action')}")
+
+        load_dotenv()
 
         query_form.entities = self._extract_entities(doc)
         self.logger.info(f"Extracted entities: {query_form.entities}")
+
+        query_form.intent = self._determine_intent(doc, query_form.entities)
+        self.logger.info(f"Determined intent: {query_form.intent.get('action')}")
 
         query_form.context = self._get_context(query_form.user_id)
 
         query_form.emotion = self.emotions_module.get_emotion(query_form.user_id)
         self.logger.info(f"Emotion for user {query_form.user_id}: {query_form.emotion}")
 
-        query_form.query_text = self._determine_intent(doc)
-        self.logger.info(f"Determined expression: {query_form.user_id}: {query_form.intent.get('expression')}")
+        self.logger.info(f"Action: {query_form.intent['action']}")
 
         if query_form.intent['action'] == 'calculate':
-            expression = query_form.intent.get('expression')
+            expression = query_form.intent.get('expression', '')
             if expression:
-                response = self.math_skill.handle_math(expression)
+                response = self.math_skill.calculate_expression(expression)
             else:
                 response = "Не удалось распознать математическое выражение."
+        elif query_form.intent['action'] == 'weather':
+            self.logger.info("Weather getting")
+            location = query_form.intent.get('location')
+            if location:
+                response = self.weather_skill.get_weather(location)
+            else:
+                response = "Укажите местоположение для погоды."
         else:
             response = self._generate_response(query_form)
 
         return response
 
-    def _determine_intent(self, doc):
+    def _determine_intent(self, doc, entities):
         action = 'unknown'
         expression = None
+        location = None
 
         for token in doc:
             if token.dep_ == 'ROOT' and token.pos_ == 'VERB':
@@ -56,10 +67,17 @@ class ProcessingModule:
                 if action in ['посчитай', 'посчитать']:
                     action = 'calculate'
                     expression = doc.text[doc[token.i + 1:].start_char:].strip()
-                    break
+                elif action in ['покажи', 'скажи', 'узнать'] and 'погода' in entities[0]['context_words']:
+                    action = 'weather'
+                    for ent in doc.ents:
+                        if ent.label_ == 'LOC':
+                            location = ent.text
+                            break
 
         if action == 'calculate' and expression:
             return {'action': 'calculate', 'expression': expression}
+        elif action == 'weather' and location:
+            return {'action': 'weather', 'location': location}
 
         return {'action': action}
 
@@ -120,9 +138,16 @@ class ProcessingModule:
                 expression = self.math_skill.parse_expression(query_form.query_text)
             result = self.math_skill.calculate_expression(expression)
             return result
+        elif intent == 'weather':
+            location = next((entity['text'] for entity in entities if entity['type'] == 'location'), None)
+            self.logger.debug("Getting weather")
+            if location:
+                return self.weather_skill.get_weather(location)
+            else:
+                return "Пожалуйста, укажите местоположение для получения погоды."
         elif intent == 'приветствовать':
             return self._handle_greeting(user_emotion)
-        elif intent == 'спрашивать':
+        elif intent == 'спросить':
             return self._handle_inquiry(entities, context)
         elif intent == 'сделать':
             return 'Что именно вы хотели бы сделать?'
@@ -139,6 +164,6 @@ class ProcessingModule:
 
     def _handle_inquiry(self, entities, context):
         if entities:
-            return f'Ты спрашиваешь о {entities[0]["text"]}...'
+            return f'Вы спрашиваете о {entities[0]["text"]}...'
         else:
-            return 'Что ты хотел бы узнать?'
+            return 'Что вы хотели бы узнать?'
